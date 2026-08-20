@@ -1,0 +1,51 @@
+name: Hydrate EmbersFort
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hydrate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hydrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and verify prepared repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL 'https://app.buildy.so/app/bd27969a-b226-4de9-bdf7-2dbf58b7ef30/assets/embersfort-upload-ready.zip?exp=1787290285&sig=5afc949176acd10952c1567ff21f381f73827b029238c3556f6bdbec3a29840b' -o /tmp/embersfort.zip
+          echo 'e5c3d07c99fe43123866dca12d737a3c2464b48a18667d95f44efb27977ca024  /tmp/embersfort.zip' | sha256sum -c -
+          rm -rf /tmp/embersfort-hydrate
+          mkdir -p /tmp/embersfort-hydrate
+          unzip -q /tmp/embersfort.zip -d /tmp/embersfort-hydrate
+          test -f /tmp/embersfort-hydrate/embersfort/AGENT_START_HERE.md
+          test -f /tmp/embersfort-hydrate/embersfort/docs/index.html
+
+      - name: Replace bootstrap tree with prepared repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/embersfort-hydrate/embersfort/. ./
+          rm -f .github/workflows/hydrate.yml
+
+      - name: Commit hydrated repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'Hydrate EmbersFort repository'
+          git push origin HEAD:main
