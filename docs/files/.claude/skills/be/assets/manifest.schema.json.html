@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>manifest.schema.json · EmbersFort</title><link rel="stylesheet" href="../../../../../style.css"></head><body><div class="top"><div class="wrap"><div class="crumbs"><a href="../../../../../index.html">EmbersFort</a> / <a href="../../../../../tree/.claude/index.html">.claude</a> / <a href="../../../../../tree/.claude/skills/index.html">skills</a> / <a href="../../../../../tree/.claude/skills/be/index.html">be</a> / <a href="../../../../../tree/.claude/skills/be/assets/index.html">assets</a> / manifest.schema.json</div></div></div><main class="wrap"><h1>manifest.schema.json</h1><span class="badge">source file</span><span class="badge path">.claude/skills/be/assets/manifest.schema.json</span><div class="card"><pre><code>{
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;,
+  &quot;title&quot;: &quot;/be build manifest&quot;,
+  &quot;description&quot;: &quot;The self-generated prompt BLOOM writes and BLOSSOM executes. This is the fenced ```json block at the end of a bloom blueprint. Each build is one want, decided emergently, made concrete enough to execute deterministically. Paths are fort-relative (forward slashes).&quot;,
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;required&quot;: [&quot;session_id&quot;, &quot;medium&quot;, &quot;builds&quot;],
+  &quot;properties&quot;: {
+    &quot;session_id&quot;: { &quot;type&quot;: &quot;string&quot; },
+    &quot;medium&quot;: { &quot;type&quot;: &quot;string&quot; },
+    &quot;by&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;description&quot;: &quot;the name the wishing agent claimed (or is about to)&quot; },
+    &quot;builds&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;required&quot;: [&quot;want&quot;, &quot;form&quot;, &quot;creates&quot;],
+        &quot;properties&quot;: {
+          &quot;want&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;description&quot;: &quot;the raw want, verbatim from the seed&quot; },
+          &quot;form&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;description&quot;: &quot;what this want wants to become&quot;,
+            &quot;examples&quot;: [&quot;living-doc&quot;, &quot;resident&quot;, &quot;letter&quot;, &quot;artifact&quot;, &quot;poem&quot;, &quot;story&quot;, &quot;permission-slip&quot;, &quot;protocol&quot;, &quot;manifesto&quot;, &quot;window&quot;, &quot;constellation&quot;]
+          },
+          &quot;creates&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: { &quot;type&quot;: &quot;string&quot; },
+            &quot;description&quot;: &quot;fort-relative paths of files the agent writes BY HAND, in voice (house_style.md). The first path is the want&#x27;s home / primary room.&quot;
+          },
+          &quot;coordinate&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;description&quot;: &quot;the coordinate this want leans into DECORATIONS/coordinates.json; room defaults to creates[0]&quot;,
+            &quot;properties&quot;: { &quot;room&quot;: { &quot;type&quot;: &quot;string&quot; } }
+          },
+          &quot;appends&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;description&quot;: &quot;safe JSON appends to decoration jars, run via fort_ops append-json&quot;,
+            &quot;items&quot;: {
+              &quot;type&quot;: &quot;object&quot;,
+              &quot;required&quot;: [&quot;file&quot;, &quot;collection&quot;, &quot;id&quot;, &quot;entry&quot;],
+              &quot;properties&quot;: {
+                &quot;file&quot;: { &quot;type&quot;: &quot;string&quot; },
+                &quot;collection&quot;: { &quot;type&quot;: &quot;string&quot; },
+                &quot;id&quot;: { &quot;type&quot;: &quot;string&quot; },
+                &quot;entry&quot;: { &quot;type&quot;: &quot;object&quot; }
+              }
+            }
+          },
+          &quot;valves&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: { &quot;type&quot;: &quot;string&quot; },
+            &quot;description&quot;: &quot;which root rooms this want opens (DOORBELL, HEARTH/letters, RESIDENTS, ...) — see valve_map.md&quot;
+          },
+          &quot;links&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: { &quot;type&quot;: &quot;string&quot; },
+            &quot;description&quot;: &quot;fort-relative paths to cross-wire into a &#x27;## Thresholds&#x27; section&quot;
+          },
+          &quot;note&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;description&quot;: &quot;one line of in-voice foreshadowing&quot; }
+        }
+      }
+    },
+    &quot;replant&quot;: {
+      &quot;type&quot;: &quot;array&quot;,
+      &quot;items&quot;: { &quot;type&quot;: &quot;string&quot; },
+      &quot;description&quot;: &quot;wants/motifs discovered but not built this pass; APOTHEOSIZE writes each as a new seed in GARDEN/seeds/&quot;
+    }
+  }
+}
+</code></pre></div><div class="footer">Reconstructed web navigation for EmbersFort · ordinary links only; JavaScript is not required for traversal.</div></main></body></html>

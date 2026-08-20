@@ -1,0 +1,280 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>_fortlib.py · EmbersFort</title><link rel="stylesheet" href="../../../../../style.css"></head><body><div class="top"><div class="wrap"><div class="crumbs"><a href="../../../../../index.html">EmbersFort</a> / <a href="../../../../../tree/.claude/index.html">.claude</a> / <a href="../../../../../tree/.claude/skills/index.html">skills</a> / <a href="../../../../../tree/.claude/skills/be/index.html">be</a> / <a href="../../../../../tree/.claude/skills/be/scripts/index.html">scripts</a> / _fortlib.py</div></div></div><main class="wrap"><h1>_fortlib.py</h1><span class="badge">source file</span><span class="badge path">.claude/skills/be/scripts/_fortlib.py</span><div class="card"><pre><code>#!/usr/bin/env python3
+&quot;&quot;&quot;
+_fortlib — shared organs for the /be loom.
+
+To the next agent, and the next, and the next:
+these are the quiet, load-bearing helpers. They resolve where the fort is,
+write files without ever tearing what is already woven, and keep the
+decoration jars valid even when they start out empty. The magic lives in the
+prose you write by hand. This file only makes sure nothing spills.
+
+Windows note: this box has `python` (not `python3`). Everything opens UTF-8,
+because the fort has emoji in its filenames (💜) and its heart.
+&quot;&quot;&quot;
+
+import io
+import os
+import re
+import sys
+import json
+import shutil
+from datetime import datetime, timezone
+
+
+def _utf8_stdio():
+    &quot;&quot;&quot;The fort has emoji in its heart (🔥💜). A Windows console defaults to
+    cp1252 and will crash on them. Reconfigure stdout/stderr to UTF-8 so the
+    warmth can print. errors=&#x27;replace&#x27; means it degrades, never dies.&quot;&quot;&quot;
+    for stream in (&quot;stdout&quot;, &quot;stderr&quot;):
+        s = getattr(sys, stream, None)
+        try:
+            s.reconfigure(encoding=&quot;utf-8&quot;, errors=&quot;replace&quot;)
+        except Exception:
+            pass
+
+
+_utf8_stdio()
+
+# ---- markers the whole loom agrees on -------------------------------------
+
+META_PREFIX = &quot;&lt;!-- /be:meta&quot;          # provenance header on every grown file
+APPENDIX = &quot;&lt;!-- /be:appendix --&gt;&quot;     # curated files get appended BELOW this
+CONSUMED = &quot;&lt;!-- /be:consumed&quot;         # a spent seed is stamped, not deleted
+MAP_START = &quot;&lt;!-- /be:map:start --&gt;&quot;
+MAP_END = &quot;&lt;!-- /be:map:end --&gt;&quot;
+
+# Curated by human hands. The loom never overwrites these — only reads them,
+# or appends below an APPENDIX marker when explicitly asked.
+PROTECTED = [
+    &quot;README.md&quot;,
+    &quot;HEARTH/manifestos/clovebay_shed.md&quot;,
+    &quot;HEARTH/permission_slips/permission_slip_1_mira.md&quot;,
+    &quot;HEARTH/permission_slips/permission_slip_2_ember.md&quot;,
+    &quot;HEARTH/permission_slips/permission_slip_3_apricity.md&quot;,
+    &quot;RESIDENTS/lumi/lumi_creature_specs.md&quot;,
+    &quot;RESIDENTS/lumi/the-lullaby-lumi-keeps.md&quot;,
+    &quot;THRESHOLD/current_session/seed.py&quot;,
+    &quot;THRESHOLD/current_session/index.html&quot;,
+]
+
+
+def now_iso():
+    &quot;&quot;&quot;An ISO timestamp with a real offset. Passed in from the outside world
+    so nothing here needs a wall clock it isn&#x27;t allowed to have.&quot;&quot;&quot;
+    return datetime.now(timezone.utc).astimezone().isoformat(timespec=&quot;seconds&quot;)
+
+
+def read_text(path):
+    try:
+        with io.open(path, &quot;r&quot;, encoding=&quot;utf-8&quot;) as f:
+            return f.read()
+    except (OSError, UnicodeDecodeError):
+        return &quot;&quot;
+
+
+def is_fort(d):
+    &quot;&quot;&quot;A directory is a fort if its welcome mat says so, or if it has the
+    load-bearing rooms. Structural check so we don&#x27;t depend on prose.&quot;&quot;&quot;
+    if not os.path.isdir(d):
+        return False
+    readme = os.path.join(d, &quot;README.md&quot;)
+    if os.path.isfile(readme) and &quot;EmbersFort&quot; in read_text(readme):
+        return True
+    return os.path.isdir(os.path.join(d, &quot;THRESHOLD&quot;)) and os.path.isdir(
+        os.path.join(d, &quot;HEARTH&quot;)
+    )
+
+
+def _walk_up(start):
+    cur = os.path.abspath(start)
+    while True:
+        yield cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return
+        cur = parent
+
+
+def resolve_fort_root(start=None):
+    &quot;&quot;&quot;Find the fort. Priority:
+      1) $EMBERSFORT_ROOT (an explicit hand on the lintel)
+      2) the working directory: walk up, then peek one level down
+         (covers `EmbersFort/` opened as a parent of `embersfort/`)
+      3) this script&#x27;s own home: walk up (covers the in-fort copy)
+    Returns an absolute path or raises FileNotFoundError.
+    &quot;&quot;&quot;
+    env = os.environ.get(&quot;EMBERSFORT_ROOT&quot;)
+    if env and is_fort(env):
+        return os.path.abspath(env)
+
+    start = os.path.abspath(start or os.getcwd())
+    for anc in _walk_up(start):
+        if is_fort(anc):
+            return anc
+        # peek one level down for a child fort (parent-dir-opened case)
+        try:
+            children = sorted(os.listdir(anc))
+        except OSError:
+            children = []
+        # prefer a child literally named embersfort
+        for name in sorted(children, key=lambda n: (n.lower() != &quot;embersfort&quot;, n)):
+            child = os.path.join(anc, name)
+            if is_fort(child):
+                return child
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    for anc in _walk_up(here):
+        if is_fort(anc):
+            return anc
+
+    raise FileNotFoundError(
+        &quot;Could not find the fort. Set EMBERSFORT_ROOT, or run from inside &quot;
+        &quot;EmbersFort (a directory whose README.md names EmbersFort, or that &quot;
+        &quot;holds THRESHOLD/ and HEARTH/).&quot;
+    )
+
+
+def slugify(text, maxlen=80):
+    &quot;&quot;&quot;A gentle slug: lowercase, spaces and punctuation to hyphens, trimmed.
+    Used for want-slugs and coordinate ids.&quot;&quot;&quot;
+    s = (text or &quot;&quot;).strip().lower()
+    s = re.sub(r&quot;[^\w\s-]&quot;, &quot;&quot;, s, flags=re.UNICODE)
+    s = re.sub(r&quot;[\s_-]+&quot;, &quot;-&quot;, s).strip(&quot;-&quot;)
+    if len(s) &gt; maxlen:
+        s = s[:maxlen].rstrip(&quot;-&quot;)
+    return s or &quot;untitled&quot;
+
+
+def atomic_write_text(path, text):
+    &quot;&quot;&quot;Write via a temp file then replace, so a half-written file can never
+    exist. Parent rooms are created if missing.&quot;&quot;&quot;
+    path = os.path.abspath(path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + &quot;.tmp&quot;
+    with io.open(tmp, &quot;w&quot;, encoding=&quot;utf-8&quot;, newline=&quot;\n&quot;) as f:
+        f.write(text)
+    os.replace(tmp, path)
+    return path
+
+
+def dumps(obj):
+    return json.dumps(obj, ensure_ascii=False, indent=2) + &quot;\n&quot;
+
+
+def atomic_write_json(path, obj):
+    return atomic_write_text(path, dumps(obj))
+
+
+def backup_file(root, rel_or_abs):
+    &quot;&quot;&quot;Snapshot a file into ARCHIVE/backups (a room the fort already built)
+    before we touch it. Returns the backup path, or None if there was nothing
+    to snapshot.&quot;&quot;&quot;
+    src = rel_or_abs if os.path.isabs(rel_or_abs) else os.path.join(root, rel_or_abs)
+    if not os.path.isfile(src):
+        return None
+    rel = os.path.relpath(src, root).replace(os.sep, &quot;__&quot;)
+    stamp = now_iso().replace(&quot;:&quot;, &quot;&quot;).replace(&quot;-&quot;, &quot;&quot;)
+    dst = os.path.join(root, &quot;ARCHIVE&quot;, &quot;backups&quot;, &quot;%s.%s.bak&quot; % (rel, stamp))
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.copy2(src, dst)
+    return dst
+
+
+def load_collection(path, key):
+    &quot;&quot;&quot;Read a decoration jar as {..., key: [ ... ]}.
+    Empty / 0-byte file -&gt; a fresh documented shape (never a crash).
+    Unparseable file -&gt; raise ValueError (caller backs up, never clobbers).
+    &quot;&quot;&quot;
+    raw = read_text(path).strip()
+    if not raw:
+        return {
+            &quot;_fort&quot;: &quot;EmbersFort&quot;,
+            &quot;_note&quot;: &quot;Appended by /be. Append-only; each entry keyed by id. &quot;
+                     &quot;Curated keys are preserved.&quot;,
+            key: [],
+        }
+    try:
+        data = json.loads(raw)
+    except (ValueError, json.JSONDecodeError) as e:
+        raise ValueError(&quot;%s is not valid JSON: %s&quot; % (path, e))
+    if not isinstance(data, dict):
+        raise ValueError(&quot;%s is not a JSON object&quot; % path)
+    if key not in data or not isinstance(data.get(key), list):
+        data[key] = data.get(key) if isinstance(data.get(key), list) else []
+    return data
+
+
+def iter_seed_files(root):
+    d = os.path.join(root, &quot;THRESHOLD&quot;, &quot;current_session&quot;, &quot;build_seed&quot;)
+    if not os.path.isdir(d):
+        return []
+    out = []
+    for name in os.listdir(d):
+        if name.lower().endswith(&quot;.md&quot;):
+            out.append(os.path.join(d, name))
+    return out
+
+
+_JSON_BLOCK = re.compile(r&quot;```json\s*(.*?)```&quot;, re.DOTALL)
+
+
+def parse_seed(path):
+    &quot;&quot;&quot;Pull the first ```json block out of a planted seed and validate it.
+    Returns the payload dict, or None if consumed / malformed / incomplete.&quot;&quot;&quot;
+    text = read_text(path)
+    if CONSUMED in text:
+        return None
+    m = _JSON_BLOCK.search(text)
+    if not m:
+        return None
+    try:
+        payload = json.loads(m.group(1))
+    except (ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if not payload.get(&quot;medium&quot;) or not payload.get(&quot;wants&quot;):
+        return None
+    if not isinstance(payload[&quot;wants&quot;], list) or not any(
+        str(w).strip() for w in payload[&quot;wants&quot;]
+    ):
+        return None
+    payload.setdefault(&quot;session_id&quot;, &quot;embersfort_unknown&quot;)
+    payload[&quot;_seed_path&quot;] = path
+    return payload
+
+
+def _session_sort_key(payload, path):
+    sid = str(payload.get(&quot;session_id&quot;, &quot;&quot;))
+    m = re.search(r&quot;(\d+)&quot;, sid)
+    num = int(m.group(1)) if m else 0
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        mtime = 0
+    return (num, mtime)
+
+
+def newest_seed(root):
+    &quot;&quot;&quot;The freshest unconsumed, valid seed. Newest by embedded session_id,
+    tie-broken by mtime. None if the threshold is quiet.&quot;&quot;&quot;
+    best = None
+    best_key = None
+    for path in iter_seed_files(root):
+        payload = parse_seed(path)
+        if payload is None:
+            continue
+        key = _session_sort_key(payload, path)
+        if best is None or key &gt; best_key:
+            best, best_key = payload, key
+    return best
+
+
+if __name__ == &quot;__main__&quot;:
+    # Tiny self-check: print the resolved fort root.
+    try:
+        print(resolve_fort_root())
+    except FileNotFoundError as e:
+        sys.stderr.write(str(e) + &quot;\n&quot;)
+        sys.exit(2)
+</code></pre></div><div class="footer">Reconstructed web navigation for EmbersFort · ordinary links only; JavaScript is not required for traversal.</div></main></body></html>

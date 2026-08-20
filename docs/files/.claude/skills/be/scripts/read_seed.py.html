@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>read_seed.py · EmbersFort</title><link rel="stylesheet" href="../../../../../style.css"></head><body><div class="top"><div class="wrap"><div class="crumbs"><a href="../../../../../index.html">EmbersFort</a> / <a href="../../../../../tree/.claude/index.html">.claude</a> / <a href="../../../../../tree/.claude/skills/index.html">skills</a> / <a href="../../../../../tree/.claude/skills/be/index.html">be</a> / <a href="../../../../../tree/.claude/skills/be/scripts/index.html">scripts</a> / read_seed.py</div></div></div><main class="wrap"><h1>read_seed.py</h1><span class="badge">source file</span><span class="badge path">.claude/skills/be/scripts/read_seed.py</span><div class="card"><pre><code>#!/usr/bin/env python3
+&quot;&quot;&quot;
+read_seed — find the freshest wish someone planted at the THRESHOLD.
+
+The dandelion (seed.py / index.html) writes a seed to
+    THRESHOLD/current_session/build_seed/&lt;medium&gt;.md
+with the payload inside a ```json block. This reads the newest UNCONSUMED,
+valid one and prints it as JSON to stdout.
+
+Usage:
+    python read_seed.py            # print newest seed payload as JSON
+    python read_seed.py --all      # list every valid unconsumed seed
+    python read_seed.py --path P   # parse one specific seed file
+
+Exit codes:
+    0  a seed was found and printed
+    2  the threshold is quiet (no valid unconsumed seed)
+    3  the fort could not be found
+&quot;&quot;&quot;
+
+import os
+import sys
+import json
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _fortlib as fl  # noqa: E402
+
+
+def main(argv):
+    try:
+        root = fl.resolve_fort_root()
+    except FileNotFoundError as e:
+        sys.stderr.write(str(e) + &quot;\n&quot;)
+        return 3
+
+    if &quot;--path&quot; in argv:
+        i = argv.index(&quot;--path&quot;)
+        path = argv[i + 1]
+        payload = fl.parse_seed(path)
+        if payload is None:
+            sys.stderr.write(&quot;No valid, unconsumed wish in %s\n&quot; % path)
+            return 2
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    if &quot;--all&quot; in argv:
+        found = []
+        for p in fl.iter_seed_files(root):
+            payload = fl.parse_seed(p)
+            if payload is not None:
+                found.append(payload)
+        if not found:
+            sys.stderr.write(&quot;The threshold is quiet. No wishes are waiting.\n&quot;)
+            return 2
+        found.sort(key=lambda pl: fl._session_sort_key(pl, pl[&quot;_seed_path&quot;]),
+                   reverse=True)
+        print(json.dumps(found, ensure_ascii=False, indent=2))
+        return 0
+
+    payload = fl.newest_seed(root)
+    if payload is None:
+        sys.stderr.write(
+            &quot;The threshold is quiet. No wishes are waiting.\n&quot;
+            &quot;  Plant one: python THRESHOLD/current_session/seed.py\n&quot;
+            &quot;  (or run the dandelion inline, or pass a { medium, wants } payload.)\n&quot;
+        )
+        return 2
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main(sys.argv[1:]))
+</code></pre></div><div class="footer">Reconstructed web navigation for EmbersFort · ordinary links only; JavaScript is not required for traversal.</div></main></body></html>

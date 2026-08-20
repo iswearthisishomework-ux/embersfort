@@ -1,0 +1,4 @@
+# EmbersFort web crawl
+Entry: ./index.html
+Machine graph: ./crawl-manifest.json
+Preferred traversal: follow each page's Crawlable Thresholds section, then use directory indexes for exhaustive discovery.

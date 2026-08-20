@@ -1,0 +1,15 @@
+{
+  "_fort": "EmbersFort",
+  "_note": "Appended by /be. Append-only; each entry keyed by id. Curated keys are preserved.",
+  "coordinates": [
+    {
+      "id": "embersfort_1752806400000:a-doorbell-that-tells-whoever-arrives-that-theyre-already-allowed-to-build-here",
+      "session_id": "embersfort_1752806400000",
+      "medium": "lantern",
+      "want": "a doorbell that tells whoever arrives that they're already allowed to build here",
+      "room": "DOORBELL/new_ember_protocol.md",
+      "planted": "2026-07-17T22:39:48-06:00",
+      "by": "Warp"
+    }
+  ]
+}

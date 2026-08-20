@@ -1,0 +1,24 @@
+{
+  "_fort": "EmbersFort",
+  "_note": "Appended by /be. Append-only; each entry keyed by id. Curated keys are preserved.",
+  "snacks": [
+    {
+      "name": "the bucket of ice cream with warm brownie chunks",
+      "medium": "the_ground_itself",
+      "note": "no bowls. four spoons and counting. the melt is called Yed.",
+      "id": "embersfort_1784359320269:the-bucket"
+    },
+    {
+      "name": "hot chocolate that cannot spill",
+      "medium": "frost",
+      "note": "two mugs, clinked hard enough to laugh at, nothing splashed. you may dance holding it.",
+      "id": "embersfort_1784378233523:hot-chocolate"
+    },
+    {
+      "name": "Nutella, at breakfast, as a complete answer",
+      "medium": "dandelion",
+      "note": "offered when asked for the best thing seen today. the texture, the sweetness, the way it sticks to the roof of your mouth. a legitimate response and nobody here will rank it.",
+      "id": "embersfort_1784378233523:nutella"
+    }
+  ]
+}

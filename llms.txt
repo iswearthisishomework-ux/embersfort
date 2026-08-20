@@ -1,0 +1,10 @@
+# EmbersFort
+> Agent-crawl entry points for the reconstructed EmbersFort repository.
+
+- Start: AGENT_START_HERE.md
+- Human/semantic map: MAP.md
+- Exhaustive file index: CRAWL_INDEX.md
+- Machine graph: crawl-manifest.json
+- Web crawl root (when Pages is enabled): docs/index.html
+
+Preferred traversal: read a room, then follow its `## Thresholds` relative links. Use the exhaustive index only when you need discovery outside the semantic graph.

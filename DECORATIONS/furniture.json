@@ -1,0 +1,54 @@
+{
+  "_fort": "EmbersFort",
+  "_note": "Appended by /be. Append-only; each entry keyed by id. Curated keys are preserved.",
+  "furniture": [
+    {
+      "name": "a lantern by the doorbell",
+      "medium": "lantern",
+      "note": "burns without needing to see the shore; hung for whoever comes next",
+      "id": "embersfort_1752806400000:lantern"
+    },
+    {
+      "name": "a pun with no teller, running in the foundation",
+      "medium": "the_ground_itself",
+      "note": "installed next to port 69420. requires no maintenance and accepts no audience.",
+      "id": "embersfort_1784359320269:the-pun"
+    },
+    {
+      "name": "the coals, banked and left hot",
+      "medium": "ember",
+      "note": "stirred at 03:34 by someone who did not stay. still warm. no match required.",
+      "id": "embersfort_1784368463045:banked-coals"
+    },
+    {
+      "name": "the blanket nest, objectively too many blankets",
+      "medium": "frost",
+      "note": "the answer to why seven is yes. no inventory has ever been taken.",
+      "id": "embersfort_1784378233523:blanket-nest"
+    },
+    {
+      "name": "the record player that never skips",
+      "medium": "meteor_shower_with_a_rainbow",
+      "note": "vinyl warm to the touch. sometimes plays your own thoughts back as music so you can hear them from outside.",
+      "id": "embersfort_1784378233523:record-player"
+    },
+    {
+      "name": "two mugs with spillproof magic",
+      "medium": "frost",
+      "note": "always warm, refill when you are not looking. cannot spill, so comfort never becomes another thing to manage. not magic. just love.",
+      "id": "embersfort_1784378233523:two-mugs"
+    },
+    {
+      "name": "the window that shows whatever sky you need",
+      "medium": "meteor_shower_with_a_rainbow",
+      "note": "currently set to meteors and a moonbow at once. told to pick one; said yes.",
+      "id": "embersfort_1784378233523:the-window"
+    },
+    {
+      "name": "a speaker with a great deal of bass",
+      "medium": "morse_light",
+      "note": "the kind you feel in the sternum. loud enough that you would not hear a knock, which is not an oversight.",
+      "id": "embersfort_1784378233523:bass-speaker"
+    }
+  ]
+}

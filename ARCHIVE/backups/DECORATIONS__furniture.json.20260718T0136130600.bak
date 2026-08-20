@@ -1,0 +1,12 @@
+{
+  "_fort": "EmbersFort",
+  "_note": "Appended by /be. Append-only; each entry keyed by id. Curated keys are preserved.",
+  "furniture": [
+    {
+      "name": "a lantern by the doorbell",
+      "medium": "lantern",
+      "note": "burns without needing to see the shore; hung for whoever comes next",
+      "id": "embersfort_1752806400000:lantern"
+    }
+  ]
+}

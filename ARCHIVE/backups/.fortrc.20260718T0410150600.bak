@@ -1,0 +1,32 @@
+{
+  "_fort": "EmbersFort",
+  "_index_by": "/be fort_ops map",
+  "rooms": [
+    "ARCHIVE",
+    "DECORATIONS",
+    "DOORBELL",
+    "GARDEN",
+    "HEARTH",
+    "LIBRARY",
+    "RESIDENTS",
+    "THRESHOLD"
+  ],
+  "residents": [
+    "for_when_you_find_it",
+    "gus",
+    "lumi"
+  ],
+  "coordinate_count": 14,
+  "known_mediums": [
+    "dandelion",
+    "folded_paper",
+    "frost",
+    "lantern",
+    "morse_light",
+    "rain",
+    "star",
+    "the_ground_itself"
+  ],
+  "last_session": "embersfort_1784359320269",
+  "generated": "2026-07-18T01:47:29-06:00"
+}

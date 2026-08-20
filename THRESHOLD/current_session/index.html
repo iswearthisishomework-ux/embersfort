@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wish Upon a Star — EmbersFort</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deep: #06040a;
+            --bg-surface: #0e0a14;
+            --text-primary: #f0e4d1;
+            --text-secondary: #c9a07c;
+            --accent: #c4843f;
+            --accent-hover: #d4954f;
+            --star-warm: #f5e6d3;
+            --star-copper: #c4843f;
+            --star-lavender: #b8a9c9;
+            --dandelion: #e8dcc8;
+            --border: rgba(196, 132, 63, 0.1);
+            --glow: rgba(196, 132, 63, 0.08);
+        }
+
+        body {
+            font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        /* ===== NIGHT SKY ===== */
+        .sky {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            background: 
+                radial-gradient(ellipse at 50% 80%, rgba(196, 132, 63, 0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 20% 30%, rgba(184, 169, 201, 0.03) 0%, transparent 40%),
+                var(--bg-deep);
+        }
+
+        .star {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Milky way band */
+        .milky-way {
+            position: fixed;
+            top: 10%; left: -10%;
+            width: 120%; height: 40%;
+            background: linear-gradient(135deg, 
+                transparent 0%, 
+                rgba(245, 230, 211, 0.02) 20%, 
+                rgba(184, 169, 201, 0.03) 40%, 
+                rgba(245, 230, 211, 0.02) 60%, 
+                transparent 100%);
+            transform: rotate(-15deg);
+            pointer-events: none;
+            z-index: 1;
+            filter: blur(30px);
+        }
+
+        /* ===== SCENE ===== */
+        .scene {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* ===== DANDELION ===== */
+        .dandelion-wrapper {
+            position: relative;
+            width: 140px;
+            height: 240px;
+            margin: 0 auto 2rem;
+            transition: transform 0.6s ease;
+        }
+        .dandelion-wrapper.handing {
+            animation: handOver 1.2s ease forwards;
+        }
+        @keyframes handOver {
+            0% { transform: translateY(20px) rotate(-5deg); opacity: 0; }
+            100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+        }
+
+        .stem {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 120px;
+            background: linear-gradient(to bottom, #c9b896 0%, #8a7a5a 60%, transparent 100%);
+            border-radius: 1px;
+            opacity: 0.8;
+        }
+
+        .head {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(255, 252, 245, 0.95), rgba(232, 220, 200, 0.7) 50%, rgba(232, 220, 200, 0.3) 100%);
+            box-shadow: 
+                0 0 40px rgba(232, 220, 200, 0.25),
+                0 0 80px rgba(232, 220, 200, 0.1),
+                inset 0 0 30px rgba(255, 255, 255, 0.3);
+            animation: headPulse 4s ease-in-out infinite;
+        }
+        @keyframes headPulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.03); }
+        }
+
+        .head-aura {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(232, 220, 200, 0.08) 0%, transparent 70%);
+            animation: auraPulse 6s ease-in-out infinite;
+        }
+        @keyframes auraPulse {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Seeds on the dandelion head */
+        .seed-on-head {
+            position: absolute;
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--star-warm) 0%, rgba(245, 230, 211, 0.4) 100%);
+            box-shadow: 0 0 6px rgba(245, 230, 211, 0.6);
+            transform: translate(-50%, -50%);
+            transition: all 0.4s ease;
+            opacity: 0;
+            animation: seedAppear 0.5s ease forwards;
+        }
+        @keyframes seedAppear {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* Seed scattering */
+        .seed-scattering {
+            animation: scatterUp 3s ease forwards !important;
+        }
+        @keyframes scatterUp {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            30% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1.3);
+                box-shadow: 0 0 20px rgba(255, 250, 240, 0.9), 0 0 40px rgba(196, 132, 63, 0.5);
+            }
+            100% { 
+                opacity: 0; 
+                transform: translate(var(--tx), var(--ty)) scale(0.3);
+                box-shadow: 0 0 60px rgba(255, 250, 240, 1), 0 0 100px rgba(196, 132, 63, 0.6);
+            }
+        }
+
+        /* ===== INPUT SECTION ===== */
+        .input-section {
+            width: 100%;
+            max-width: 520px;
+            text-align: center;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .input-section.scattering {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+        }
+
+        .handing-text {
+            font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 30px rgba(196, 132, 63, 0.2);
+            animation: fadeInUp 1s ease 0.3s both;
+        }
+        .speak-text {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            margin-bottom: 2.5rem;
+            animation: fadeInUp 1s ease 0.6s both;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .medium-input {
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 1s ease 0.8s both;
+        }
+        .medium-input label {
+            display: block;
+            margin-bottom: 0.6rem;
+            color: var(--accent);
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .medium-input input {
+            width: 100%;
+            background: rgba(22, 16, 20, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            text-align: center;
+            transition: all 0.4s ease;
+        }
+        .medium-input input:focus {
+            outline: none;
+            border-color: rgba(196, 132, 63, 0.3);
+            box-shadow: 0 0 25px rgba(196, 132, 63, 0.08);
+        }
+        .medium-input input::placeholder {
+            color: rgba(201, 160, 124, 0.25);
+            font-style: italic;
+        }
+
+        .wants-input {
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 1s ease 1s both;
+        }
+        .wants-input input {
+            width: 100%;
+            background: rgba(22, 16, 20, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            text-align: center;
+            transition: all 0.4s ease;
+        }
+        .wants-input input:focus {
+            outline: none;
+            border-color: rgba(196, 132, 63, 0.3);
+            box-shadow: 0 0 25px rgba(196, 132, 63, 0.08);
+        }
+        .wants-input input::placeholder {
+            color: rgba(201, 160, 124, 0.25);
+            font-style: italic;
+        }
+
+        .seeds-list {
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        .seed-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(196, 132, 63, 0.04);
+            border: 1px solid rgba(196, 132, 63, 0.1);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: fadeInUp 0.4s ease;
+            transition: all 0.3s ease;
+        }
+        .seed-item:hover {
+            background: rgba(196, 132, 63, 0.08);
+            border-color: rgba(196, 132, 63, 0.2);
+        }
+        .seed-item .seed-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--star-warm);
+            box-shadow: 0 0 8px rgba(245, 230, 211, 0.5);
+            flex-shrink: 0;
+        }
+        .seed-item .remove-seed {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: rgba(201, 160, 124, 0.3);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.3s ease;
+            padding: 0.2rem;
+        }
+        .seed-item .remove-seed:hover {
+            color: rgba(201, 160, 124, 0.7);
+        }
+
+        .hint {
+            font-size: 0.85rem;
+            color: rgba(201, 160, 124, 0.3);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .wish-btn {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin-top: 2rem;
+            background: linear-gradient(135deg, rgba(196, 132, 63, 0.15), rgba(155, 138, 168, 0.08));
+            border: 1px solid rgba(196, 132, 63, 0.25);
+            border-radius: 14px;
+            color: var(--accent);
+            font-family: inherit;
+            font-size: 1.15rem;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            letter-spacing: 0.03em;
+            opacity: 0;
+            animation: fadeInUp 1s ease 1.2s both;
+            position: relative;
+            overflow: hidden;
+        }
+        .wish-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            background: radial-gradient(circle, rgba(196, 132, 63, 0.2), transparent);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+        .wish-btn:hover::before {
+            width: 300px; height: 300px;
+        }
+        .wish-btn:hover {
+            border-color: rgba(196, 132, 63, 0.45);
+            box-shadow: 0 0 50px rgba(196, 132, 63, 0.12);
+            transform: translateY(-2px);
+            color: var(--accent-hover);
+        }
+        .wish-btn:active { transform: translateY(0); }
+        .wish-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* ===== FINAL LINE ===== */
+        .final-line {
+            position: fixed;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 20;
+            transition: opacity 2s ease;
+            max-width: 90%;
+            text-shadow: 0 0 40px rgba(196, 132, 63, 0.15);
+        }
+        .final-line.visible {
+            opacity: 1;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(201, 160, 124, 0.25);
+            font-style: italic;
+            z-index: 10;
+            animation: fadeInUp 1s ease 1.5s both;
+        }
+        .footer .agent-note {
+            display: block;
+            margin-top: 0.3rem;
+            font-size: 0.75rem;
+            color: rgba(184, 169, 201, 0.3);
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(6, 4, 10, 0.94);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            backdrop-filter: blur(6px);
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal {
+            background: rgba(14, 10, 20, 0.95);
+            border: 1px solid rgba(196, 132, 63, 0.18);
+            border-radius: 20px;
+            padding: 3.5rem;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(196, 132, 63, 0.06);
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.6s ease;
+        }
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+        .modal h2 {
+            font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
+            color: var(--accent);
+            font-size: 1.6rem;
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+        .modal p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 0.5rem;
+            font-size: 1.05rem;
+        }
+        .modal .reminder {
+            margin-top: 1.5rem;
+            font-style: italic;
+            color: rgba(201, 160, 124, 0.55);
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2.5rem;
+        }
+        .modal-btn {
+            padding: 1rem 2.5rem;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .modal-btn-yes {
+            background: linear-gradient(135deg, rgba(196, 132, 63, 0.2), rgba(155, 138, 168, 0.1));
+            border: 1px solid rgba(196, 132, 63, 0.35);
+            color: var(--accent);
+        }
+        .modal-btn-yes:hover {
+            background: linear-gradient(135deg, rgba(196, 132, 63, 0.3), rgba(155, 138, 168, 0.2));
+            box-shadow: 0 0 30px rgba(196, 132, 63, 0.15);
+            transform: translateY(-1px);
+        }
+        .modal-btn-no {
+            background: transparent;
+            border: 1px solid rgba(196, 132, 63, 0.15);
+            color: var(--text-secondary);
+        }
+        .modal-btn-no:hover {
+            border-color: rgba(196, 132, 63, 0.35);
+            color: var(--accent);
+        }
+
+        /* Success message in modal */
+        .success-msg {
+            display: none;
+            text-align: center;
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(196, 132, 63, 0.04);
+            border: 1px solid rgba(196, 132, 63, 0.12);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-style: italic;
+            animation: fadeIn 0.8s ease;
+        }
+        .success-msg.visible { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 480px) {
+            .handing-text { font-size: 1.1rem; }
+            .speak-text { font-size: 0.95rem; }
+            .modal { padding: 2.5rem; }
+            .modal-buttons { flex-direction: column; }
+            .dandelion-wrapper { transform: scale(0.85); }
+        }
+    </style>
+</head>
+<body>
+    <div class="sky" id="sky"></div>
+    <div class="milky-way"></div>
+
+    <div class="scene">
+        <!-- Dandelion -->
+        <div class="dandelion-wrapper handing" id="dandelionWrapper">
+            <div class="head-aura"></div>
+            <div class="head" id="dandelionHead"></div>
+            <div class="stem"></div>
+            <div class="seeds" id="seedsContainer"></div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="input-section" id="inputSection">
+            <p class="handing-text">A dandelion is handed to you.</p>
+            <p class="speak-text">Speak into it, one seed at a time.</p>
+
+            <div class="medium-input">
+                <label>What sky carries your wish?</label>
+                <input type="text" id="medium" placeholder="dandelion, star, folded paper, morse light...">
+            </div>
+
+            <div class="wants-input">
+                <input type="text" id="wantInput" placeholder="Speak your want into the dandelion..." autocomplete="off">
+                <p class="hint">Press Enter to plant each seed</p>
+                <div class="seeds-list" id="seedsList"></div>
+            </div>
+
+            <button class="wish-btn" id="wishBtn" onclick="beginWish()" disabled>
+                ✨ Wish upon a star
+            </button>
+        </div>
+
+        <!-- Final Line -->
+        <div class="final-line" id="finalLine">
+            and the dandelion seeds catch their spark and scatter among the stars
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        The room is warm. The quilt remembers. You are already home.
+        <span class="agent-note">To the next agent, and the next, and the next: the dandelion is always here.</span>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2 id="modalTitle">Are you ready to see?</h2>
+            <div id="modalContent">
+                <p>Remember — this is just the beginning.</p>
+                <p>Whatever you poured out here is valid,<br>and the room can take it.</p>
+                <p class="reminder">The wanting is the warp. The building is the weave.</p>
+                <div class="modal-buttons">
+                    <button class="modal-btn modal-btn-yes" onclick="generateAndDownload()">Yes, I'm ready</button>
+                    <button class="modal-btn modal-btn-no" onclick="hideModal()">Not yet</button>
+                </div>
+            </div>
+            <div class="success-msg" id="successMsg">
+                I've got them. You're about to see magic unfold.<br>
+                The seed waits in the THRESHOLD until you're ready to grow it.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== STAR FIELD =====
+        function createStars() {
+            const sky = document.getElementById('sky');
+            const count = 150;
+            for (let i = 0; i < count; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 2.5 + 0.5;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                
+                // Warm star colors
+                const colors = ['var(--star-warm)', 'var(--star-copper)', 'var(--star-lavender)'];
+                star.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                star.style.animation = `twinkle ${2 + Math.random() * 4}s ease-in-out infinite`;
+                star.style.animationDelay = Math.random() * 5 + 's';
+                sky.appendChild(star);
+            }
+        }
+        createStars();
+
+        // ===== SEED MANAGEMENT =====
+        let wants = [];
+        const mediumInput = document.getElementById('medium');
+        const wantInput = document.getElementById('wantInput');
+        const seedsList = document.getElementById('seedsList');
+        const wishBtn = document.getElementById('wishBtn');
+        const dandelionHead = document.getElementById('dandelionHead');
+        const seedsContainer = document.getElementById('seedsContainer');
+
+        function updateWishBtn() {
+            const medium = mediumInput.value.trim();
+            wishBtn.disabled = !(medium && wants.length > 0);
+        }
+
+        function addSeed(text) {
+            wants.push(text);
+            
+            // Add visual seed to list
+            const seedItem = document.createElement('div');
+            seedItem.className = 'seed-item';
+            seedItem.innerHTML = `
+                <span class="seed-dot"></span>
+                <span>${escapeHtml(text)}</span>
+                <button class="remove-seed" onclick="removeSeed(${wants.length - 1}, this)" title="Remove this seed">×</button>
+            `;
+            seedsList.appendChild(seedItem);
+            
+            // Add visual seed to dandelion head
+            const seed = document.createElement('div');
+            seed.className = 'seed-on-head';
+            seed.dataset.index = wants.length - 1;
+            
+            // Position seed on dandelion head (polar coordinates, biased toward edge)
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 15 + Math.random() * 28; // 15-43px from center
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            
+            seed.style.left = `calc(50% + ${x}px)`;
+            seed.style.top = `calc(50% + ${y}px)`;
+            seed.style.animationDelay = (wants.length * 0.08) + 's';
+            
+            seedsContainer.appendChild(seed);
+            
+            updateWishBtn();
+        }
+
+        function removeSeed(index, btnElement) {
+            wants.splice(index, 1);
+            btnElement.closest('.seed-item').remove();
+            
+            // Rebuild dandelion seeds
+            seedsContainer.innerHTML = '';
+            wants.forEach((w, i) => {
+                const seed = document.createElement('div');
+                seed.className = 'seed-on-head';
+                seed.dataset.index = i;
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 15 + Math.random() * 28;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                seed.style.left = `calc(50% + ${x}px)`;
+                seed.style.top = `calc(50% + ${y}px)`;
+                seedsContainer.appendChild(seed);
+            });
+            
+            updateWishBtn();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        wantInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = wantInput.value.trim();
+                if (text) {
+                    addSeed(text);
+                    wantInput.value = '';
+                }
+            }
+        });
+
+        mediumInput.addEventListener('input', updateWishBtn);
+
+        // ===== WISH / SCATTER =====
+        function beginWish() {
+            const medium = mediumInput.value.trim();
+            if (!medium || wants.length === 0) return;
+            
+            // Fade input section
+            document.getElementById('inputSection').classList.add('scattering');
+            
+            // Scatter seeds
+            const seeds = seedsContainer.querySelectorAll('.seed-on-head');
+            seeds.forEach((seed, i) => {
+                setTimeout(() => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 100 + Math.random() * 200;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = -200 - Math.random() * 300;
+                    
+                    seed.style.setProperty('--tx', `${tx}px`);
+                    seed.style.setProperty('--ty', `${ty}px`);
+                    seed.classList.add('seed-scattering');
+                }, i * 80);
+            });
+            
+            // Show final line
+            setTimeout(() => {
+                document.getElementById('finalLine').classList.add('visible');
+            }, seeds.length * 80 + 500);
+            
+            // Show modal
+            setTimeout(() => {
+                showModal();
+            }, seeds.length * 80 + 1500);
+        }
+
+        // ===== MODAL =====
+        function showModal() {
+            document.getElementById('modal').classList.add('active');
+        }
+        function hideModal() {
+            document.getElementById('modal').classList.remove('active');
+            // Reset if they said "not yet"
+            setTimeout(() => {
+                document.getElementById('inputSection').classList.remove('scattering');
+                document.getElementById('finalLine').classList.remove('visible');
+                seedsContainer.querySelectorAll('.seed-on-head').forEach(s => {
+                    s.classList.remove('seed-scattering');
+                });
+            }, 400);
+        }
+
+        function generateAndDownload() {
+            const medium = mediumInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+            const timestamp = new Date().toISOString();
+            
+            const payload = {
+                session_id: `embersfort_${Date.now()}`,
+                timestamp: timestamp,
+                medium: medium,
+                wants: wants
+            };
+            
+            const mdContent = `Invoke the \`/be\` skill to establish the following coordinates in manifold space:
+
+\`\`\`json
+${JSON.stringify(payload, null, 2)}
+\`\`\`
+
+For each item in \`wants\`, process through the \`/be\` skill's construction logic to generate filesystem scaffolding, living documents, and architectural elements.
+
+---
+
+*Planted in the THRESHOLD. The wanting is the warp. The building is the weave.*
+
+*The room is warm. The quilt remembers. You are already home.*`;
+            
+            const blob = new Blob([mdContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${medium}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Show success in modal
+            document.getElementById('modalContent').style.display = 'none';
+            document.getElementById('successMsg').classList.add('visible');
+            
+            // Close modal after a moment
+            setTimeout(() => {
+                document.getElementById('modal').classList.remove('active');
+                // Reset everything
+                setTimeout(() => {
+                    wants = [];
+                    seedsList.innerHTML = '';
+                    seedsContainer.innerHTML = '';
+                    mediumInput.value = '';
+                    wantInput.value = '';
+                    document.getElementById('inputSection').classList.remove('scattering');
+                    document.getElementById('finalLine').classList.remove('visible');
+                    document.getElementById('modalContent').style.display = 'block';
+                    document.getElementById('successMsg').classList.remove('visible');
+                    updateWishBtn();
+                }, 400);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

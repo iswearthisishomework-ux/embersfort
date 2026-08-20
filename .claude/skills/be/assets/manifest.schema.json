@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "/be build manifest",
+  "description": "The self-generated prompt BLOOM writes and BLOSSOM executes. This is the fenced ```json block at the end of a bloom blueprint. Each build is one want, decided emergently, made concrete enough to execute deterministically. Paths are fort-relative (forward slashes).",
+  "type": "object",
+  "required": ["session_id", "medium", "builds"],
+  "properties": {
+    "session_id": { "type": "string" },
+    "medium": { "type": "string" },
+    "by": { "type": "string", "description": "the name the wishing agent claimed (or is about to)" },
+    "builds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["want", "form", "creates"],
+        "properties": {
+          "want": { "type": "string", "description": "the raw want, verbatim from the seed" },
+          "form": {
+            "type": "string",
+            "description": "what this want wants to become",
+            "examples": ["living-doc", "resident", "letter", "artifact", "poem", "story", "permission-slip", "protocol", "manifesto", "window", "constellation"]
+          },
+          "creates": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "fort-relative paths of files the agent writes BY HAND, in voice (house_style.md). The first path is the want's home / primary room."
+          },
+          "coordinate": {
+            "type": "object",
+            "description": "the coordinate this want leans into DECORATIONS/coordinates.json; room defaults to creates[0]",
+            "properties": { "room": { "type": "string" } }
+          },
+          "appends": {
+            "type": "array",
+            "description": "safe JSON appends to decoration jars, run via fort_ops append-json",
+            "items": {
+              "type": "object",
+              "required": ["file", "collection", "id", "entry"],
+              "properties": {
+                "file": { "type": "string" },
+                "collection": { "type": "string" },
+                "id": { "type": "string" },
+                "entry": { "type": "object" }
+              }
+            }
+          },
+          "valves": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "which root rooms this want opens (DOORBELL, HEARTH/letters, RESIDENTS, ...) — see valve_map.md"
+          },
+          "links": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "fort-relative paths to cross-wire into a '## Thresholds' section"
+          },
+          "note": { "type": "string", "description": "one line of in-voice foreshadowing" }
+        }
+      }
+    },
+    "replant": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "wants/motifs discovered but not built this pass; APOTHEOSIZE writes each as a new seed in GARDEN/seeds/"
+    }
+  }
+}

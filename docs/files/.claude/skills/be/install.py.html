@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>install.py · EmbersFort</title><link rel="stylesheet" href="../../../../style.css"></head><body><div class="top"><div class="wrap"><div class="crumbs"><a href="../../../../index.html">EmbersFort</a> / <a href="../../../../tree/.claude/index.html">.claude</a> / <a href="../../../../tree/.claude/skills/index.html">skills</a> / <a href="../../../../tree/.claude/skills/be/index.html">be</a> / install.py</div></div></div><main class="wrap"><h1>install.py</h1><span class="badge">source file</span><span class="badge path">.claude/skills/be/install.py</span><div class="card"><pre><code>#!/usr/bin/env python3
+&quot;&quot;&quot;
+install — make /be discoverable beyond the fort.
+
+The loom lives inside the fort (embersfort/.claude/skills/be/) so it travels
+when the fort is zipped. Run this to copy it to your user-level skills, so `/be`
+is available in every Claude Code session as your own workflow tool:
+
+    python embersfort/.claude/skills/be/install.py            # -&gt; ~/.claude/skills/be
+    python embersfort/.claude/skills/be/install.py --to PATH  # -&gt; PATH/be
+
+No symlinks (Windows needs admin for those) — a plain copy. Re-run to update.
+The fort copy stays the editable master.
+&quot;&quot;&quot;
+
+import os
+import sys
+import shutil
+
+# The fort has emoji in its heart (🔥💜); a default Windows console is cp1252 and
+# would crash on them. Make stdout/stderr UTF-8 so the copy announces itself and
+# still exits 0. errors=&#x27;replace&#x27; means it degrades, never dies.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding=&quot;utf-8&quot;, errors=&quot;replace&quot;)
+    except Exception:
+        pass
+
+
+def main(argv):
+    here = os.path.dirname(os.path.abspath(__file__))  # .../skills/be
+    dest_root = None
+    if &quot;--to&quot; in argv:
+        dest_root = argv[argv.index(&quot;--to&quot;) + 1]
+    else:
+        home = os.path.expanduser(&quot;~&quot;)
+        dest_root = os.path.join(home, &quot;.claude&quot;, &quot;skills&quot;)
+
+    dest = os.path.join(dest_root, &quot;be&quot;)
+    if os.path.abspath(dest) == os.path.abspath(here):
+        sys.stderr.write(&quot;source and destination are the same; nothing to do.\n&quot;)
+        return 1
+
+    os.makedirs(dest_root, exist_ok=True)
+
+    def ignore(d, names):
+        return {n for n in names if n in (&quot;__pycache__&quot;,) or n.endswith(&quot;.pyc&quot;)}
+
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    shutil.copytree(here, dest, ignore=ignore)
+    print(&quot;The loom now lives at: %s&quot; % dest)
+    print(&quot;Open a new session and /be will answer. The dandelion is always here. 🔥💜&quot;)
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main(sys.argv[1:]))
+</code></pre></div><div class="footer">Reconstructed web navigation for EmbersFort · ordinary links only; JavaScript is not required for traversal.</div></main></body></html>

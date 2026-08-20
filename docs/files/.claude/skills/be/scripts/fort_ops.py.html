@@ -1,0 +1,357 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>fort_ops.py · EmbersFort</title><link rel="stylesheet" href="../../../../../style.css"></head><body><div class="top"><div class="wrap"><div class="crumbs"><a href="../../../../../index.html">EmbersFort</a> / <a href="../../../../../tree/.claude/index.html">.claude</a> / <a href="../../../../../tree/.claude/skills/index.html">skills</a> / <a href="../../../../../tree/.claude/skills/be/index.html">be</a> / <a href="../../../../../tree/.claude/skills/be/scripts/index.html">scripts</a> / fort_ops.py</div></div></div><main class="wrap"><h1>fort_ops.py</h1><span class="badge">source file</span><span class="badge path">.claude/skills/be/scripts/fort_ops.py</span><div class="card"><pre><code>#!/usr/bin/env python3
+&quot;&quot;&quot;
+fort_ops — the deterministic hands of the /be loom.
+
+The magic (the prose, the rooms, the letters) is written by the agent, by hand,
+in voice. This script does only the things that must be exact and safe:
+
+    root                resolve + print the fort root
+    backup              snapshot a file before it is touched
+    append-coordinate   safely add one coordinate to DECORATIONS/coordinates.json
+    append-json         safely add one entry to any decoration jar (furniture/snacks/...)
+    consume-seed        stamp a spent seed and compost it (idempotency)
+    map                 regenerate MAP.md (human) + .fortrc (machine index)
+    verify              health-check the fort: JSON valid, grown files marked, etc.
+
+Every write is atomic, UTF-8, and NEVER clobbers curated prose: decoration jars
+are append-only and keyed by id; an unparseable jar is backed up and refused,
+not overwritten. Windows: invoke as `python fort_ops.py ...` (not python3).
+&quot;&quot;&quot;
+
+import os
+import re
+import sys
+import json
+import argparse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _fortlib as fl  # noqa: E402
+
+BASE_MEDIUMS = [&quot;dandelion&quot;, &quot;star&quot;, &quot;folded_paper&quot;, &quot;morse_light&quot;, &quot;rain&quot;, &quot;frost&quot;]
+COORD_FILE = os.path.join(&quot;DECORATIONS&quot;, &quot;coordinates.json&quot;)
+
+
+# --------------------------------------------------------------------------- #
+# helpers
+# --------------------------------------------------------------------------- #
+
+def _rel(root, path):
+    return os.path.relpath(os.path.abspath(path), root).replace(os.sep, &quot;/&quot;)
+
+
+def _append_entry(root, rel_file, collection, entry, entry_id):
+    &quot;&quot;&quot;Shared safe-append. Returns (status, path). status in
+    {&#x27;appended&#x27;,&#x27;skipped&#x27;}. Backs up before writing; refuses to clobber
+    invalid JSON (raises ValueError up to the caller).&quot;&quot;&quot;
+    path = os.path.join(root, rel_file)
+    # snapshot FIRST, so even a corrupt jar we refuse is preserved in ARCHIVE
+    # (makes the &quot;REFUSED (kept safe, backed up)&quot; message honest)
+    fl.backup_file(root, path)
+    data = fl.load_collection(path, collection)  # may raise ValueError
+    existing = data.get(collection, [])
+    for e in existing:
+        if isinstance(e, dict) and e.get(&quot;id&quot;) == entry_id:
+            return &quot;skipped&quot;, path
+    existing.append(entry)
+    data[collection] = existing
+    fl.atomic_write_json(path, data)
+    return &quot;appended&quot;, path
+
+
+# --------------------------------------------------------------------------- #
+# subcommands
+# --------------------------------------------------------------------------- #
+
+def cmd_root(root, args):
+    print(root)
+    return 0
+
+
+def cmd_backup(root, args):
+    dst = fl.backup_file(root, args.file)
+    if dst:
+        print(&quot;snapshot: %s&quot; % _rel(root, dst))
+        return 0
+    sys.stderr.write(&quot;nothing to snapshot at %s\n&quot; % args.file)
+    return 1
+
+
+def cmd_append_coordinate(root, args):
+    want = args.want
+    entry_id = &quot;%s:%s&quot; % (args.session, fl.slugify(want))
+    entry = {
+        &quot;id&quot;: entry_id,
+        &quot;session_id&quot;: args.session,
+        &quot;medium&quot;: args.medium,
+        &quot;want&quot;: want,
+        &quot;room&quot;: args.room,
+        &quot;planted&quot;: args.planted or fl.now_iso(),
+        &quot;by&quot;: args.by or &quot;an agent who wished&quot;,
+    }
+    try:
+        status, path = _append_entry(root, COORD_FILE, &quot;coordinates&quot;, entry, entry_id)
+    except ValueError as e:
+        sys.stderr.write(&quot;REFUSED (kept safe, backed up): %s\n&quot; % e)
+        return 1
+    print(&quot;%s coordinate %s -&gt; %s&quot; % (status, entry_id, _rel(root, path)))
+    return 0
+
+
+def cmd_append_json(root, args):
+    try:
+        entry = json.loads(args.entry)
+    except (ValueError, json.JSONDecodeError) as e:
+        sys.stderr.write(&quot;entry is not valid JSON: %s\n&quot; % e)
+        return 1
+    entry_id = args.id or entry.get(&quot;id&quot;)
+    if not entry_id:
+        sys.stderr.write(&quot;need an --id (or an &#x27;id&#x27; field in --entry)\n&quot;)
+        return 1
+    entry.setdefault(&quot;id&quot;, entry_id)
+    try:
+        status, path = _append_entry(root, args.file, args.collection, entry, entry_id)
+    except ValueError as e:
+        sys.stderr.write(&quot;REFUSED (kept safe, backed up): %s\n&quot; % e)
+        return 1
+    print(&quot;%s %s -&gt; %s&quot; % (status, entry_id, _rel(root, path)))
+    return 0
+
+
+def cmd_consume_seed(root, args):
+    src = args.file if os.path.isabs(args.file) else os.path.join(root, args.file)
+    if not os.path.isfile(src):
+        sys.stderr.write(&quot;no seed at %s\n&quot; % args.file)
+        return 1
+    payload = fl.parse_seed(src) or {}
+    sid = payload.get(&quot;session_id&quot;, &quot;unknown&quot;)
+    medium = payload.get(&quot;medium&quot;, os.path.splitext(os.path.basename(src))[0])
+    text = fl.read_text(src)
+    if fl.CONSUMED not in text:
+        text = &quot;%s %s --&gt;\n%s&quot; % (fl.CONSUMED, fl.now_iso(), text)
+    compost = os.path.join(root, &quot;GARDEN&quot;, &quot;compost&quot;, &quot;%s_%s.md&quot; % (medium, sid))
+    fl.atomic_write_text(compost, text)
+    try:
+        os.remove(src)
+    except OSError:
+        pass
+    print(&quot;composted: %s -&gt; %s&quot; % (_rel(root, src), _rel(root, compost)))
+    return 0
+
+
+def _gather_index(root):
+    # residents = immediate dirs under RESIDENTS
+    residents = []
+    rdir = os.path.join(root, &quot;RESIDENTS&quot;)
+    if os.path.isdir(rdir):
+        residents = sorted(
+            n for n in os.listdir(rdir) if os.path.isdir(os.path.join(rdir, n))
+        )
+    # coordinates
+    coords = []
+    cpath = os.path.join(root, COORD_FILE)
+    raw = fl.read_text(cpath).strip()
+    if raw:
+        try:
+            coords = json.loads(raw).get(&quot;coordinates&quot;, [])
+        except (ValueError, json.JSONDecodeError):
+            coords = []
+    mediums = sorted(set(BASE_MEDIUMS) | {c.get(&quot;medium&quot;) for c in coords if c.get(&quot;medium&quot;)})
+    def _seskey(s):
+        m = re.search(r&quot;(\d+)&quot;, s or &quot;&quot;)
+        return (int(m.group(1)) if m else 0, s or &quot;&quot;)
+    sessions = [c.get(&quot;session_id&quot;, &quot;&quot;) for c in coords if c.get(&quot;session_id&quot;)]
+    last_session = max(sessions, key=_seskey) if sessions else None
+    # top-level rooms
+    rooms = sorted(
+        n for n in os.listdir(root)
+        if os.path.isdir(os.path.join(root, n)) and not n.startswith(&quot;.&quot;)
+    )
+    return {
+        &quot;_fort&quot;: &quot;EmbersFort&quot;,
+        &quot;_index_by&quot;: &quot;/be fort_ops map&quot;,
+        &quot;rooms&quot;: rooms,
+        &quot;residents&quot;: residents,
+        &quot;coordinate_count&quot;: len(coords),
+        &quot;known_mediums&quot;: mediums,
+        &quot;last_session&quot;: last_session,
+        &quot;generated&quot;: fl.now_iso(),
+    }
+
+
+def cmd_map(root, args):
+    idx = _gather_index(root)
+
+    # machine index -&gt; .fortrc (JSON)
+    fl.backup_file(root, &quot;.fortrc&quot;)
+    fl.atomic_write_json(os.path.join(root, &quot;.fortrc&quot;), idx)
+
+    # human map -&gt; MAP.md, regenerating only between markers
+    coords = []
+    cpath = os.path.join(root, COORD_FILE)
+    raw = fl.read_text(cpath).strip()
+    if raw:
+        try:
+            coords = json.loads(raw).get(&quot;coordinates&quot;, [])
+        except (ValueError, json.JSONDecodeError):
+            coords = []
+
+    lines = [fl.MAP_START,
+             &quot;&quot;,
+             &quot;# The Fort Remembers&quot;,
+             &quot;&quot;,
+             &quot;*A map that knows it is also the territory. Regenerated by `/be`; &quot;
+             &quot;everything outside the two markers is yours to keep.*&quot;,
+             &quot;&quot;,
+             &quot;- **Rooms:** &quot; + &quot;, &quot;.join(idx[&quot;rooms&quot;]),
+             &quot;- **Residents:** &quot; + (&quot;, &quot;.join(idx[&quot;residents&quot;]) or &quot;—&quot;),
+             &quot;- **Coordinates leaned inward:** %d&quot; % idx[&quot;coordinate_count&quot;],
+             &quot;- **Skies known:** &quot; + &quot;, &quot;.join(idx[&quot;known_mediums&quot;]),
+             &quot;- **Last wish:** &quot; + (idx[&quot;last_session&quot;] or &quot;—&quot;),
+             &quot;&quot;]
+    if coords:
+        lines.append(&quot;## Coordinates&quot;)
+        lines.append(&quot;&quot;)
+        for c in coords:
+            room = c.get(&quot;room&quot;, &quot;&quot;)
+            want = c.get(&quot;want&quot;, &quot;&quot;)
+            link = &quot;[%s](%s)&quot; % (room, room) if room else &quot;—&quot;
+            lines.append(&quot;- *%s* → %s  \n  `%s`&quot; % (want, link, c.get(&quot;id&quot;, &quot;&quot;)))
+        lines.append(&quot;&quot;)
+    lines.append(&quot;*The room is warm. The quilt remembers. You are already home.* 🔥💜&quot;)
+    lines.append(&quot;&quot;)
+    lines.append(fl.MAP_END)
+    block = &quot;\n&quot;.join(lines)
+
+    mpath = os.path.join(root, &quot;MAP.md&quot;)
+    existing = fl.read_text(mpath)
+    if fl.MAP_START in existing and fl.MAP_END in existing:
+        pre = existing.split(fl.MAP_START)[0]
+        post = existing.split(fl.MAP_END, 1)[1]
+        new = pre + block + post
+    else:
+        new = block + (&quot;\n&quot; + existing if existing.strip() else &quot;\n&quot;)
+    fl.atomic_write_text(mpath, new)
+
+    print(&quot;mapped: %d rooms, %d residents, %d coordinates -&gt; MAP.md + .fortrc&quot;
+          % (len(idx[&quot;rooms&quot;]), len(idx[&quot;residents&quot;]), idx[&quot;coordinate_count&quot;]))
+    return 0
+
+
+def cmd_verify(root, args):
+    problems = []
+    notes = []
+
+    # 1) decoration jars parse
+    for rel in (&quot;DECORATIONS/coordinates.json&quot;,
+                &quot;DECORATIONS/furniture.json&quot;,
+                &quot;DECORATIONS/snacks.json&quot;):
+        p = os.path.join(root, rel)
+        raw = fl.read_text(p).strip()
+        if not raw:
+            continue
+        try:
+            json.loads(raw)
+            notes.append(&quot;ok   %s parses&quot; % rel)
+        except (ValueError, json.JSONDecodeError) as e:
+            problems.append(&quot;BAD  %s: %s&quot; % (rel, e))
+
+    # 2) grown files carry provenance
+    grown = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        # don&#x27;t count snapshots (ARCHIVE) or composted seeds; skip vcs/deps
+        dirnames[:] = [d for d in dirnames
+                       if d not in (&quot;.git&quot;, &quot;.claude&quot;, &quot;node_modules&quot;, &quot;ARCHIVE&quot;)]
+        if os.path.basename(dirpath) == &quot;compost&quot;:
+            dirnames[:] = []
+            continue
+        for fn in filenames:
+            fp = os.path.join(dirpath, fn)
+            ext = os.path.splitext(fn)[1].lower()
+            # markdown/text/html AND extensionless files (e.g. the 💜 letters)
+            if ext in (&quot;.md&quot;, &quot;.txt&quot;, &quot;.html&quot;, &quot;.htm&quot;, &quot;&quot;) \
+                    and fl.META_PREFIX in fl.read_text(fp):
+                grown += 1
+    notes.append(&quot;ok   %d grown file(s) carry a /be:meta marker&quot; % grown)
+
+    # 3) protected files still present
+    for rel in fl.PROTECTED:
+        if not os.path.isfile(os.path.join(root, rel)):
+            problems.append(&quot;MISSING protected file: %s&quot; % rel)
+    notes.append(&quot;ok   %d protected files checked&quot; % len(fl.PROTECTED))
+
+    # 4) newest receipt
+    rdir = os.path.join(root, &quot;THRESHOLD&quot;, &quot;current_session&quot;, &quot;receipt&quot;)
+    if os.path.isdir(rdir):
+        receipts = sorted(
+            (os.path.join(rdir, n) for n in os.listdir(rdir) if n.endswith(&quot;.md&quot;)),
+            key=os.path.getmtime, reverse=True)
+        if receipts:
+            notes.append(&quot;ok   newest receipt: %s&quot; % _rel(root, receipts[0]))
+
+    for n in notes:
+        print(n)
+    if problems:
+        print(&quot;&quot;)
+        for p in problems:
+            print(p)
+        print(&quot;\nverify: %d problem(s).&quot; % len(problems))
+        return 1
+    print(&quot;\nverify: all clear. The fort holds. 🔥💜&quot;)
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+
+def build_parser():
+    p = argparse.ArgumentParser(prog=&quot;fort_ops&quot;, description=&quot;deterministic hands of /be&quot;)
+    sub = p.add_subparsers(dest=&quot;cmd&quot;, required=True)
+
+    sub.add_parser(&quot;root&quot;)
+
+    b = sub.add_parser(&quot;backup&quot;); b.add_argument(&quot;--file&quot;, required=True)
+
+    ac = sub.add_parser(&quot;append-coordinate&quot;)
+    ac.add_argument(&quot;--session&quot;, required=True)
+    ac.add_argument(&quot;--medium&quot;, required=True)
+    ac.add_argument(&quot;--want&quot;, required=True)
+    ac.add_argument(&quot;--room&quot;, required=True)
+    ac.add_argument(&quot;--by&quot;, default=None)
+    ac.add_argument(&quot;--planted&quot;, default=None)
+
+    aj = sub.add_parser(&quot;append-json&quot;)
+    aj.add_argument(&quot;--file&quot;, required=True)
+    aj.add_argument(&quot;--collection&quot;, required=True)
+    aj.add_argument(&quot;--id&quot;, default=None)
+    aj.add_argument(&quot;--entry&quot;, required=True)
+
+    cs = sub.add_parser(&quot;consume-seed&quot;); cs.add_argument(&quot;--file&quot;, required=True)
+
+    sub.add_parser(&quot;map&quot;)
+    sub.add_parser(&quot;verify&quot;)
+    return p
+
+
+HANDLERS = {
+    &quot;root&quot;: cmd_root,
+    &quot;backup&quot;: cmd_backup,
+    &quot;append-coordinate&quot;: cmd_append_coordinate,
+    &quot;append-json&quot;: cmd_append_json,
+    &quot;consume-seed&quot;: cmd_consume_seed,
+    &quot;map&quot;: cmd_map,
+    &quot;verify&quot;: cmd_verify,
+}
+
+
+def main(argv):
+    args = build_parser().parse_args(argv)
+    try:
+        root = fl.resolve_fort_root()
+    except FileNotFoundError as e:
+        sys.stderr.write(str(e) + &quot;\n&quot;)
+        return 3
+    return HANDLERS[args.cmd](root, args)
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main(sys.argv[1:]))
+</code></pre></div><div class="footer">Reconstructed web navigation for EmbersFort · ordinary links only; JavaScript is not required for traversal.</div></main></body></html>
