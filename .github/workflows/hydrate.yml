@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -24,7 +24,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fL 'https://app.buildy.so/app/bd27969a-b226-4de9-bdf7-2dbf58b7ef30/assets/embersfort-upload-ready.zip?exp=1787290285&sig=5afc949176acd10952c1567ff21f381f73827b029238c3556f6bdbec3a29840b' -o /tmp/embersfort.zip
+          curl -fL 'https://drive.usercontent.google.com/download?id=13FCh0i89iIv5Komx90c2Xk6S1HYe6Ezz&export=download&confirm=t' -o /tmp/embersfort.zip
+          test "$(wc -c < /tmp/embersfort.zip)" -eq 1117788
           echo 'e5c3d07c99fe43123866dca12d737a3c2464b48a18667d95f44efb27977ca024  /tmp/embersfort.zip' | sha256sum -c -
           rm -rf /tmp/embersfort-hydrate
           mkdir -p /tmp/embersfort-hydrate
@@ -36,9 +37,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/embersfort-hydrate/embersfort/. ./
-          rm -f .github/workflows/hydrate.yml .hydrate-trigger
+          rm -rf .bootstrap _transport_probe.txt
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github ! -name .hydrate-trigger -exec rm -rf {} +
+          for item in /tmp/embersfort-hydrate/embersfort/* /tmp/embersfort-hydrate/embersfort/.[!.]* /tmp/embersfort-hydrate/embersfort/..?*; do
+            [ -e "$item" ] || continue
+            name="$(basename "$item")"
+            [ "$name" = '.github' ] && continue
+            cp -a "$item" ./
+          done
 
       - name: Commit hydrated repository
         shell: bash
@@ -46,7 +52,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add -A -- ':!.github' ':!.hydrate-trigger'
           git diff --cached --quiet && exit 0
           git commit -m 'Hydrate EmbersFort repository'
           git push origin HEAD:main
